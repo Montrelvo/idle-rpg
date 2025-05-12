@@ -10,6 +10,27 @@ const ACTIVE_SKILLS = {
 };
 // --- End Skill Definitions ---
 
+// --- Archetype Definitions ---
+const ARCHETYPES = {
+ warrior: {
+   name: 'Warrior',
+   description: '+5 STR, +20 Max Health, +2 Defense.',
+   bonuses: { str: 5, maxHealth: 20, health: 20, defense: 2 }
+ },
+ mage: {
+   name: 'Mage',
+   description: '+5 INT, +10 Max Stamina, +0.5 Stamina Regen.',
+   bonuses: { int: 5, maxStamina: 10, stamina: 10, staminaRegen: 0.5 }
+ },
+ rogue: {
+   name: 'Rogue',
+   description: '+5 AGI. (Future: +Crit Chance, -Enemy Awareness)',
+   bonuses: { agi: 5 }
+   // TODO: Implement crit chance and enemy awareness for Rogue bonuses
+ }
+};
+// --- End Archetype Definitions ---
+
 // --- UI Utility Functions ---
 const MAX_LOG_MESSAGES = 20; // Max messages to display in combat log
 const combatLogElement = document.getElementById('combat-log');
@@ -35,7 +56,7 @@ function updateCombatLog(message) {
 
 
 class Hero {
-  constructor() {
+  constructor(archetypeId = null) { // Default to null if no archetype passed
     this.stats = {
       str: 10,
       int: 10,
@@ -45,8 +66,34 @@ class Hero {
       defense: 5,
       stamina: 100,
       maxStamina: 100,
-      staminaRegen: 1 // Per second
+      staminaRegen: 1, // Per second
+      // critChance: 0.05 // Base crit chance, can be modified by rogue
     };
+    this.archetype = archetypeId ? ARCHETYPES[archetypeId] : null;
+
+    if (this.archetype) {
+      updateCombatLog(`Initializing Hero as ${this.archetype.name}.`);
+      for (const stat in this.archetype.bonuses) {
+        if (this.stats.hasOwnProperty(stat)) {
+          this.stats[stat] += this.archetype.bonuses[stat];
+          updateCombatLog(`Applied archetype bonus: ${stat} +${this.archetype.bonuses[stat]}. New value: ${this.stats[stat]}`);
+        } else {
+          // This could be for stats not directly in this.stats, like a special flag
+          // For now, we assume bonuses are for existing stats.
+          updateCombatLog(`WARN: Archetype bonus for unknown stat '${stat}' for ${this.archetype.name}.`);
+        }
+      }
+      // Ensure health is not above maxHealth after bonuses
+      if (this.stats.health > this.stats.maxHealth) {
+        this.stats.health = this.stats.maxHealth;
+      }
+      if (this.stats.stamina > this.stats.maxStamina) {
+        this.stats.stamina = this.stats.maxStamina;
+      }
+    } else {
+      updateCombatLog("Initializing Hero with default stats (no archetype selected).");
+    }
+
     this.cooldowns = new Map(); // For active skills: Map<skillId, timestamp>
     this.equipment = new Map([
       ['weapon', null],
@@ -140,7 +187,46 @@ class Hero {
     }
   }
 
-  // TODO: Add methods for learning/using skills
+  learnSkill(skillId, skillType) {
+    const skillPool = skillType === 'passive' ? PASSIVE_SKILLS : ACTIVE_SKILLS;
+    const skill = skillPool[skillId];
+
+    if (!skill) {
+      updateCombatLog(`WARN: Attempted to learn unknown skill: ${skillId}`);
+      return false;
+    }
+
+    const learnedSkills = skillType === 'passive' ? this.learnedPassiveSkills : this.learnedActiveSkills;
+
+    if (learnedSkills.has(skillId)) {
+      updateCombatLog(`INFO: Skill "${skill.name}" already learned.`);
+      return false;
+    }
+
+    if (this.skillPoints < skill.cost) {
+      updateCombatLog(`INFO: Not enough skill points to learn "${skill.name}". Needs ${skill.cost}, has ${this.skillPoints}.`);
+      return false;
+    }
+
+    // TODO: Check prerequisites (skill.prereqs)
+
+    this.skillPoints -= skill.cost;
+    learnedSkills.set(skillId, 1); // Assuming level 1 for now
+
+    updateCombatLog(`Learned ${skillType} skill: "${skill.name}"! Skill points remaining: ${this.skillPoints}`);
+
+    // Apply immediate effects for passive skills
+    if (skillType === 'passive' && skill.effect) {
+      if (this.stats.hasOwnProperty(skill.effect.stat)) {
+        this.stats[skill.effect.stat] += skill.effect.value;
+        updateCombatLog(`Passive effect applied: ${skill.effect.stat} +${skill.effect.value}. New value: ${this.stats[skill.effect.stat]}`);
+        // TODO: Potentially call a recalculateDerivedStats() method here if stats like maxHealth are affected
+      } else {
+        updateCombatLog(`WARN: Unknown stat ${skill.effect.stat} for passive skill ${skill.name}`);
+      }
+    }
+    return true;
+  }
 } // End Hero Class
 
 
@@ -226,9 +312,9 @@ class LootTable {
 
 
 class CombatManager {
-  constructor(scene) { // Accept scene context
+  constructor(scene, heroArchetype = null) { // Accept scene context and optional archetype
     this.scene = scene; // Store scene context
-    this.hero = new Hero();
+    this.hero = new Hero(heroArchetype); // Pass archetype to Hero constructor
     this.currentEnemy = null;
     this.combatInterval = null;
   }
@@ -360,40 +446,81 @@ const config = {
     },
     create: function() {
       console.log("Creating game scene...");
-      // Initialize game objects
-      this.combatManager = new CombatManager(this); // Pass scene context (this)
+      
+      // --- Archetype Selection Logic ---
+      const archetypeScreen = document.getElementById('archetype-selection-screen');
+      const archetypeOptionsContainer = document.getElementById('archetype-options');
+      const gameContainer = document.querySelector('.container'); // Main game container
 
-      // Create placeholder graphics for hero
-      this.heroSprite = this.add.graphics();
-      this.heroSprite.fillStyle(0x00ff00, 1); // Green rectangle
-      this.heroSprite.fillRect(-25, -50, 50, 100); // Draw centered at (0,0) initially
-      this.heroSprite.setPosition(200, 300); // Position on screen
+      // Ensure elements exist before proceeding
+      if (!archetypeScreen || !archetypeOptionsContainer || !gameContainer) {
+          console.error("Archetype UI elements not found! Cannot initialize archetype selection.");
+          // Fallback or error handling: maybe start game with default hero
+          // For now, just log error and potentially halt.
+          // this.initializeGame(null); // Example: Start with default if UI fails
+          return;
+      }
+      
+      // Function to initialize the game after archetype selection
+      // We bind 'this' (the Phaser scene context) to initializeGame
+      const initializeGame = (selectedArchetypeId) => {
+          archetypeScreen.style.display = 'none';
+          gameContainer.style.display = 'grid'; // Or your default display type
 
-      // Placeholder for enemy sprite (will be created when combat starts)
-      this.enemySprite = null;
+          this.selectedArchetype = selectedArchetypeId;
+          // Now we initialize combatManager here, AFTER selection
+          this.combatManager = new CombatManager(this, this.selectedArchetype);
 
-      // Add text for basic stats display
-      this.heroHealthText = this.add.text(150, 420, '', { font: '16px Arial', fill: '#ffffff' });
-      this.enemyHealthText = this.add.text(550, 420, '', { font: '16px Arial', fill: '#ffffff' });
+          // Create placeholder graphics for hero
+          this.heroSprite = this.add.graphics();
+          this.heroSprite.fillStyle(0x00ff00, 1); // Green rectangle
+          this.heroSprite.fillRect(-25, -50, 50, 100);
+          this.heroSprite.setPosition(200, 300);
 
-      // Add event listeners for attribute buttons
-      document.getElementById('spend-str').addEventListener('click', () => {
-        this.combatManager.hero.spendAttributePoint('str');
-      });
-      document.getElementById('spend-int').addEventListener('click', () => {
-        this.combatManager.hero.spendAttributePoint('int');
-      });
-      document.getElementById('spend-agi').addEventListener('click', () => {
-        this.combatManager.hero.spendAttributePoint('agi');
-      });
+          this.enemySprite = null;
 
-      // Populate Skill Trees UI
-      this.populateSkillTreeUI('passive-skills', PASSIVE_SKILLS);
-      this.populateSkillTreeUI('active-skills', ACTIVE_SKILLS); // Placeholder for active skills
+          this.heroHealthText = this.add.text(150, 420, '', { font: '16px Arial', fill: '#ffffff' });
+          this.enemyHealthText = this.add.text(550, 420, '', { font: '16px Arial', fill: '#ffffff' });
 
-       // Start combat logic AFTER setting up visuals and listeners
-      this.combatManager.startAutoCombat();
+          document.getElementById('spend-str').addEventListener('click', () => {
+            if(this.combatManager && this.combatManager.hero) this.combatManager.hero.spendAttributePoint('str');
+          });
+          document.getElementById('spend-int').addEventListener('click', () => {
+            if(this.combatManager && this.combatManager.hero) this.combatManager.hero.spendAttributePoint('int');
+          });
+          document.getElementById('spend-agi').addEventListener('click', () => {
+            if(this.combatManager && this.combatManager.hero) this.combatManager.hero.spendAttributePoint('agi');
+          });
 
+          this.populateSkillTreeUI('passive-skills', PASSIVE_SKILLS);
+          this.populateSkillTreeUI('active-skills', ACTIVE_SKILLS);
+
+          if(this.combatManager) this.combatManager.startAutoCombat();
+          
+          // Call update once to immediately reflect initial stats if needed by UI elements
+          // that are not part of Phaser's direct rendering loop but are updated in this.update()
+          if (typeof this.update === 'function') {
+             this.update(performance.now(), 0); // Pass current time and zero delta
+          }
+      };
+      this.initializeGame = initializeGame.bind(this); // Bind scene context
+
+      // Populate archetype options
+      archetypeOptionsContainer.innerHTML = ''; // Clear any existing options
+      for (const archetypeId in ARCHETYPES) {
+          const archetype = ARCHETYPES[archetypeId];
+          const button = document.createElement('button');
+          button.classList.add('archetype-button');
+          button.dataset.archetypeId = archetypeId;
+          button.innerHTML = `<h3>${archetype.name}</h3><p>${archetype.description}</p>`;
+          button.addEventListener('click', () => {
+              this.initializeGame(archetypeId); // Use the bound version
+          });
+          archetypeOptionsContainer.appendChild(button);
+      }
+      // --- End Archetype Selection Logic ---
+      // Game elements are NOT initialized here anymore directly.
+      // They are initialized within initializeGame after selection.
     },
 
     // Helper function to populate skill UI
@@ -408,13 +535,24 @@ const config = {
             button.id = `learn-${skillId}`;
             button.textContent = `${skill.name} (Cost: ${skill.cost})`;
             button.title = skill.description; // Tooltip
-            button.disabled = true; // Initially disabled, enable in update loop
-            // TODO: Add event listener for learning the skill
+            button.disabled = true; // Initially disabled, enable/update in game's update loop
+
+            const skillType = elementId.includes('passive') ? 'passive' : 'active';
+            button.addEventListener('click', () => {
+                // 'this' inside create refers to the Phaser scene
+                this.combatManager.hero.learnSkill(skill.id, skillType);
+                // The update loop will handle disabling/enabling based on new state
+            });
             container.appendChild(button);
         }
     },
     update: function(time, delta) {
       // Game loop
+      // Add a guard clause to ensure combatManager and hero are initialized
+      if (!this.combatManager || !this.combatManager.hero) {
+        return; // Don't run update logic if game hasn't fully initialized
+      }
+
       const hero = this.combatManager.hero;
       const enemy = this.combatManager.currentEnemy;
 
@@ -445,7 +583,34 @@ const config = {
       document.getElementById('spend-str').disabled = !canSpendAttribPoints;
       document.getElementById('spend-int').disabled = !canSpendAttribPoints;
       document.getElementById('spend-agi').disabled = !canSpendAttribPoints;
-      // TODO: Enable/disable skill buttons based on skill points
+
+      // Enable/disable skill buttons
+      const skillButtonUpdater = (skillCollection, type) => {
+        for (const skillId in skillCollection) {
+          const skill = skillCollection[skillId];
+          const button = document.getElementById(`learn-${skillId}`);
+          if (button) {
+            const alreadyLearned = (type === 'passive' ? hero.learnedPassiveSkills.has(skillId) : hero.learnedActiveSkills.has(skillId));
+            const canAfford = hero.skillPoints >= skill.cost;
+            // TODO: Add prerequisite check here
+            // const prereqsMet = checkPrerequisites(hero, skill.prereqs);
+
+            if (alreadyLearned) {
+              button.disabled = true;
+              button.textContent = `${skill.name} (Learned)`;
+            } else if (!canAfford /* || !prereqsMet */) {
+              button.disabled = true;
+              button.textContent = `${skill.name} (Cost: ${skill.cost})`; // Keep cost visible
+            } else {
+              button.disabled = false;
+              button.textContent = `${skill.name} (Cost: ${skill.cost})`;
+            }
+          }
+        }
+      };
+
+      skillButtonUpdater(PASSIVE_SKILLS, 'passive');
+      skillButtonUpdater(ACTIVE_SKILLS, 'active');
 
       // Update health text displays in Phaser canvas
       this.heroHealthText.setText(`Hero HP: ${Math.max(0, Math.ceil(hero.stats.health))}/${hero.stats.maxHealth}`);

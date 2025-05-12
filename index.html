@@ -8,7 +8,14 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
 </head>
 <body>
-    <div class="container">
+    <div id="archetype-selection-screen">
+        <h2>Choose Your Archetype</h2>
+        <div id="archetype-options">
+            <!-- Archetypes will be populated by game.js or hardcoded here -->
+        </div>
+    </div>
+
+    <div class="container" style="display: none;"> <!-- Initially hidden -->
         <div id="game-canvas"></div>
         <div class="ui-panel">
             <div class="stats">

@@ -1,3 +1,51 @@
+#archetype-selection-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000; /* Ensure it's on top */
+    text-align: center;
+    padding: 20px;
+}
+
+#archetype-options {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.archetype-button {
+    background-color: #333;
+    border: 2px solid #555;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.archetype-button:hover {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+}
+
+.archetype-button h3 {
+    margin-top: 0;
+}
+
+.archetype-button p {
+    font-size: 0.9em;
+    color: #ccc;
+}
+
+
 .container {
     display: grid;
     grid-template-columns: 3fr 1fr;
