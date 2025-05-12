@@ -10,6 +10,29 @@ const ACTIVE_SKILLS = {
 };
 // --- End Skill Definitions ---
 
+// --- UI Utility Functions ---
+const MAX_LOG_MESSAGES = 20; // Max messages to display in combat log
+const combatLogElement = document.getElementById('combat-log');
+
+function updateCombatLog(message) {
+   if (!combatLogElement) {
+       console.warn("Combat log element not found!");
+       return;
+   }
+
+   const messageElement = document.createElement('p');
+   messageElement.textContent = message;
+   
+   // Add the new message to the top
+   combatLogElement.insertBefore(messageElement, combatLogElement.firstChild);
+
+   // Limit the number of messages
+   while (combatLogElement.children.length > MAX_LOG_MESSAGES) {
+       combatLogElement.removeChild(combatLogElement.lastChild);
+   }
+}
+// --- End UI Utility Functions ---
+
 
 class Hero {
   constructor() {
@@ -44,21 +67,27 @@ class Hero {
     this.stats.stamina -= 10;
     const baseDamage = this.stats.str * 2;
     target.takeDamage(baseDamage);
-    console.log(`Hero attacks for ${baseDamage} damage.`);
+    const message = `Hero attacks for ${baseDamage} damage.`;
+    console.log(message);
+    updateCombatLog(message);
     return true;
   }
 
   takeDamage(amount) {
     const actualDamage = Math.max(0, amount - this.stats.defense);
     this.stats.health -= actualDamage;
-    console.log(`Hero takes ${actualDamage} damage. Health: ${this.stats.health}`);
+    const message = `Hero takes ${actualDamage} damage. Health: ${this.stats.health}`;
+    console.log(message);
+    updateCombatLog(message);
     // Add logic for hero death if needed
     return this.stats.health > 0;
   }
 
   gainXP(amount) {
     this.xp += amount;
-    console.log(`Gained ${amount} XP. Total XP: ${Math.floor(this.xp)}/${this.xpToNextLevel}`);
+    const message = `Gained ${amount} XP. Total XP: ${Math.floor(this.xp)}/${this.xpToNextLevel}`;
+    console.log(message);
+    updateCombatLog(message);
     while (this.xp >= this.xpToNextLevel) {
       this.levelUp();
     }
@@ -81,7 +110,9 @@ class Hero {
     this.stats.int += 1;
     this.stats.agi += 1;
 
-    console.log(`LEVEL UP! Reached level ${this.level}. Attrib Points: ${this.attributePoints}, Skill Points: ${this.skillPoints}`);
+    const message = `LEVEL UP! Reached level ${this.level}. Attrib Points: ${this.attributePoints}, Skill Points: ${this.skillPoints}`;
+    console.log(message);
+    updateCombatLog(message);
     // TODO: Add UI notification for level up
   }
 
@@ -90,15 +121,21 @@ class Hero {
       if (stat === 'str' || stat === 'int' || stat === 'agi') {
         this.stats[stat]++;
         this.attributePoints--;
-        console.log(`Spent 1 point on ${stat.toUpperCase()}. Points remaining: ${this.attributePoints}`);
+        const message = `Spent 1 point on ${stat.toUpperCase()}. Points remaining: ${this.attributePoints}`;
+        console.log(message);
+        updateCombatLog(message);
         // TODO: Potentially recalculate derived stats (like damage, maxHealth based on STR/INT)
         return true;
       } else {
-        console.warn(`Invalid stat provided to spendAttributePoint: ${stat}`);
+        const warningMessage = `Invalid stat provided to spendAttributePoint: ${stat}`;
+        console.warn(warningMessage);
+        updateCombatLog(`WARN: ${warningMessage}`);
         return false;
       }
     } else {
-      console.warn("Attempted to spend attribute point, but none available.");
+      const warningMessage = "Attempted to spend attribute point, but none available.";
+      console.warn(warningMessage);
+      updateCombatLog(`WARN: ${warningMessage}`);
       return false;
     }
   }
@@ -127,13 +164,18 @@ class Enemy {
   takeDamage(amount) {
      const actualDamage = Math.max(0, amount - this.stats.defense);
     this.stats.health -= actualDamage;
-    console.log(`Enemy takes ${actualDamage} damage. Health: ${this.stats.health}`);
+    const message = `Enemy takes ${actualDamage} damage. Health: ${this.stats.health}`;
+    console.log(message);
+    updateCombatLog(message);
     return this.stats.health > 0;
   }
 
   attack(target) {
     if (!target) return; // Ensure target exists
     const damage = this.stats.damage;
+    const message = `Enemy (Tier ${this.tier}) attacks for ${damage} potential damage.`;
+    console.log(message);
+    updateCombatLog(message);
     target.takeDamage(damage);
   }
 } // End Enemy Class
@@ -210,7 +252,9 @@ class CombatManager {
       if (this.combatInterval) {
           clearInterval(this.combatInterval);
           this.combatInterval = null;
-          console.log("Auto-combat stopped.");
+          const message = "Auto-combat stopped.";
+          console.log(message);
+          updateCombatLog(message);
       }
   }
 
@@ -223,7 +267,9 @@ class CombatManager {
       // Create new enemy logic
       const tier = this.currentTier();
       this.currentEnemy = new Enemy(tier);
-      console.log(`New enemy spawned: Tier ${this.currentEnemy.tier}, Health ${this.currentEnemy.stats.health}`);
+      const message = `New enemy spawned: Tier ${this.currentEnemy.tier}, Health ${this.currentEnemy.stats.health}`;
+      console.log(message);
+      updateCombatLog(message);
 
       // Create placeholder graphics for the new enemy
       this.scene.enemySprite = this.scene.add.graphics();
@@ -249,7 +295,9 @@ class CombatManager {
       }
     } else {
       // Hero couldn't attack (e.g., out of stamina)
-      console.log("Hero out of stamina!");
+      const message = "Hero out of stamina!";
+      console.log(message);
+      updateCombatLog(message);
     }
 
     // Enemy attacks if still alive and hero is alive
@@ -268,7 +316,10 @@ class CombatManager {
     // Store enemy reference before clearing it
     const defeatedEnemy = this.currentEnemy;
     const loot = new LootTable(defeatedEnemy.tier).generateLoot();
-    console.log(`Enemy defeated! Loot found: Tier ${loot.tier}, Rarity ${loot.rarity}`, loot.modifiers);
+    const message = `Enemy defeated! Loot found: Tier ${loot.tier}, Rarity ${loot.rarity} (${JSON.stringify(loot.modifiers)})`;
+    console.log(message); // Keep console.log for object details if needed
+    updateCombatLog(`Enemy defeated! Loot found: Tier ${loot.tier}, Rarity ${loot.rarity}`);
+
 
     // Award XP
     this.hero.gainXP(defeatedEnemy.stats.xpValue);
@@ -286,7 +337,9 @@ class CombatManager {
   }
 
   handleHeroDefeat() {
-    console.error("Hero has been defeated!");
+    const message = "Hero has been defeated!";
+    console.error(message);
+    updateCombatLog(`ERROR: ${message}`);
     this.stopAutoCombat(); // Stop combat
     // TODO: Implement respawn logic, penalties, etc.
     // Maybe disable UI elements or show a "Defeated" screen

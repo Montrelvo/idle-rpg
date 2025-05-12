@@ -27,6 +27,29 @@
     border-radius: 4px;
 }
 
+#combat-log {
+    background: #222; /* Slightly different background for the log */
+    padding: 8px;
+    border-radius: 4px;
+    height: 150px; /* Or any desired height */
+    overflow-y: auto; /* Enable vertical scrolling */
+    font-size: 0.9em;
+    line-height: 1.4;
+    display: flex; /* To make messages stack from bottom with column-reverse */
+    flex-direction: column-reverse; /* Newest messages at the bottom, scroll up for older */
+}
+
+#combat-log p {
+    margin: 0 0 5px 0; /* Spacing between messages */
+    padding: 2px;
+    border-bottom: 1px solid #333; /* Separator for messages */
+}
+
+#combat-log p:last-child { /* No border for the very last (oldest) message at the top */
+    border-bottom: none;
+}
+
+
 .controls {
     display: grid;
     gap: 10px;
