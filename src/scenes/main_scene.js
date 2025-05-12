@@ -64,8 +64,11 @@ export const mainScene = {
       };
       this.initializeGame = initializeGame.bind(this); 
 
-      archetypeOptionsContainer.innerHTML = ''; 
+      archetypeOptionsContainer.innerHTML = '';
+      console.log('Archetype container found:', archetypeOptionsContainer); // DEBUG LOG
+      console.log('Generating archetype buttons for:', ARCHETYPES); // DEBUG LOG
       for (const archetypeId in ARCHETYPES) {
+          console.log(`Processing archetype: ${archetypeId}`); // DEBUG LOG
           const archetype = ARCHETYPES[archetypeId];
           const button = document.createElement('button');
           button.classList.add('archetype-button');
@@ -74,6 +77,7 @@ export const mainScene = {
           button.addEventListener('click', () => {
               this.initializeGame(archetypeId); 
           });
+          console.log('Created button element:', button); // DEBUG LOG
           archetypeOptionsContainer.appendChild(button);
       }
     },

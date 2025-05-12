@@ -2,6 +2,7 @@
 export const PASSIVE_SKILLS = {
   'increased_strength_1': { id: 'increased_strength_1', name: 'Might I', description: '+5 STR', effect: { stat: 'str', value: 5 }, cost: 1, prereqs: [] },
   'increased_health_1': { id: 'increased_health_1', name: 'Vitality I', description: '+20 Max Health', effect: { stat: 'maxHealth', value: 20 }, cost: 1, prereqs: [] },
+  'increased_strength_2': { id: 'increased_strength_2', name: 'Might II', description: '+10 STR', effect: { stat: 'str', value: 10 }, cost: 2, prereqs: ['increased_strength_1'] }, // Requires Might I
 };
 
 export const ACTIVE_SKILLS = {
