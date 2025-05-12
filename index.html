@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle RPG</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div id="game-canvas"></div>
+        <div class="ui-panel">
+            <div class="stats">
+                <h3>Hero Stats</h3>
+                <div id="hero-stats">
+                    <!-- Stats will be populated by game.js -->
+                </div>
+                <div id="attribute-controls" style="margin-top: 10px;">
+                    <button id="spend-str" disabled>+ STR</button>
+                    <button id="spend-int" disabled>+ INT</button>
+                    <button id="spend-agi" disabled>+ AGI</button>
+                </div>
+                <div id="combat-log"></div>
+            </div>
+            <div class="controls">
+                <button id="toggle-panel" class="mobile-only">≡</button>
+                <div class="skill-tree" id="passive-skills"></div>
+                <div class="skill-tree" id="active-skills"></div>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
