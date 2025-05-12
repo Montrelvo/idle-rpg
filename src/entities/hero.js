@@ -154,7 +154,19 @@ export class Hero {
       return false;
     }
 
-    // TODO: Check prerequisites (skill.prereqs)
+    // Check prerequisites
+    if (skill.prereqs && skill.prereqs.length > 0) {
+      for (const prereqId of skill.prereqs) {
+        // Check if the prerequisite skill exists in either passive or active learned skills
+        const foundPrereq = this.learnedPassiveSkills.has(prereqId) || this.learnedActiveSkills.has(prereqId);
+        if (!foundPrereq) {
+          // Find the name of the missing prerequisite skill for a clearer message
+          const missingSkillName = PASSIVE_SKILLS[prereqId]?.name || ACTIVE_SKILLS[prereqId]?.name || prereqId;
+          updateCombatLog(`INFO: Cannot learn "${skill.name}". Missing prerequisite: "${missingSkillName}".`);
+          return false;
+        }
+      }
+    }
 
     this.skillPoints -= skill.cost;
     learnedSkills.set(skillId, 1); // Assuming level 1 for now
