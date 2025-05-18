@@ -64,8 +64,11 @@ export const mainScene = {
       };
       this.initializeGame = initializeGame.bind(this); 
 
-      archetypeOptionsContainer.innerHTML = ''; 
+      archetypeOptionsContainer.innerHTML = '';
+      console.log('Archetype container found:', archetypeOptionsContainer); // DEBUG LOG
+      console.log('Generating archetype buttons for:', ARCHETYPES); // DEBUG LOG
       for (const archetypeId in ARCHETYPES) {
+          console.log(`Processing archetype: ${archetypeId}`); // DEBUG LOG
           const archetype = ARCHETYPES[archetypeId];
           const button = document.createElement('button');
           button.classList.add('archetype-button');
@@ -74,6 +77,7 @@ export const mainScene = {
           button.addEventListener('click', () => {
               this.initializeGame(archetypeId); 
           });
+          console.log('Created button element:', button); // DEBUG LOG
           archetypeOptionsContainer.appendChild(button);
       }
     },
@@ -144,13 +148,21 @@ export const mainScene = {
           if (button) {
             const alreadyLearned = (type === 'passive' ? hero.learnedPassiveSkills.has(skillId) : hero.learnedActiveSkills.has(skillId));
             const canAfford = hero.skillPoints >= skill.cost;
-            // TODO: Add prerequisite check here
-            // const prereqsMet = checkPrerequisites(hero, skill.prereqs);
+            // Check prerequisites
+            let prereqsMet = true;
+            if (skill.prereqs && skill.prereqs.length > 0) {
+              for (const prereqId of skill.prereqs) {
+                if (!hero.learnedPassiveSkills.has(prereqId) && !hero.learnedActiveSkills.has(prereqId)) {
+                  prereqsMet = false;
+                  break; // No need to check further if one is missing
+                }
+              }
+            }
 
             if (alreadyLearned) {
               button.disabled = true;
               button.textContent = `${skill.name} (Learned)`;
-            } else if (!canAfford /* || !prereqsMet */) {
+            } else if (!canAfford || !prereqsMet) { // Add prereqsMet check here
               button.disabled = true;
               button.textContent = `${skill.name} (Cost: ${skill.cost})`;
             } else {
